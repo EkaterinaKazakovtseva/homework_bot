@@ -49,7 +49,7 @@ def check_tokens():
         PRACTICUM_TOKEN,
         TELEGRAM_CHAT_ID,
         TELEGRAM_TOKEN,
-        )
+    )
     return all(tokens)
 
 
@@ -93,6 +93,7 @@ def check_response(response):
     last_homework = homeworks[0]
     return last_homework
 
+
 def parse_status(homework):
     """Извлекает из информации о конкретной домешней работе ее статус."""
     homework_name = homework.get('homework_name')
@@ -111,18 +112,14 @@ def parse_status(homework):
 def main():
     """Основная логика работы бота."""
     logger.debug('Бот запущен')
-
     if not check_tokens():
         logger.critical('Ошибка работы программы: '
                         'нехватает переменных окружения\n'
                         'Программа остановлена.')
         sys.exit()
-
-
     bot = telebot.TeleBot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
     last_message = ''
-
     while True:
         try:
             api_answer = get_api_answer(timestamp)
