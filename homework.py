@@ -3,7 +3,6 @@ from http import HTTPStatus
 import logging
 from logging.handlers import RotatingFileHandler
 import os
-import sys
 import time
 
 from dotenv import load_dotenv
@@ -49,9 +48,9 @@ def check_tokens():
         name_token = value
         if value is None:
             logger.critical('Ошибка работы программы: '
-                        'нехватает переменной окружения'
-                        f'{name_token}'
-                        'Программа остановлена.')
+                            'нехватает переменной окружения'
+                            f'{name_token}'
+                            'Программа остановлена.')
             return False
         else:
             return True
@@ -117,16 +116,16 @@ def parse_status(homework):
     verdict = HOMEWORK_VERDICTS.get(homework_status)
     if not verdict:
         raise ValueError('Ответ последней домашней'
-                       'не соответствует стандартным или отсуствует.')
+                         'не соответствует стандартным или отсуствует.')
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
 def main():
     """Основная логика работы бота."""
     logging.basicConfig(
-    level=logging.DEBUG,
-    filename='program.log',
-    format='%(asctime)s, %(levelname)s, %(message)s, %(name)s'
+        level=logging.DEBUG,
+        filename='program.log',
+        format='%(asctime)s, %(levelname)s, %(message)s, %(name)s'
     )
     logger.debug('Бот запущен')
     if check_tokens() is False:
