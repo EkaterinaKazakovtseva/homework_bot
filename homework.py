@@ -1,3 +1,4 @@
+import json
 from http import HTTPStatus
 import logging
 from logging.handlers import RotatingFileHandler
@@ -15,16 +16,10 @@ from exceptions import IncorrectAPIRequest, IncorrectStatusRequest
 load_dotenv()
 
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    filename='program.log',
-    format='%(asctime)s, %(levelname)s, %(message)s, %(name)s'
-)
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 handler = RotatingFileHandler(
-    'my_logger.log', maxBytes=50000000, backupCount=5)
+    'my_logger.log', maxBytes=52428800, backupCount=5)
 logger.addHandler(handler)
 
 PRACTICUM_TOKEN = os.getenv('PRAKTIKUM_TOKEN')
@@ -45,33 +40,52 @@ HOMEWORK_VERDICTS = {
 
 def check_tokens():
     """Проверяет доступность переменных окружения."""
-    tokens = (
-        PRACTICUM_TOKEN,
-        TELEGRAM_CHAT_ID,
-        TELEGRAM_TOKEN,
-    )
-    return all(tokens)
+    tokens = {
+        'PRACTICUM_TOKEN': PRACTICUM_TOKEN,
+        'TELEGRAM_CHAT_ID': TELEGRAM_CHAT_ID,
+        'TELEGRAM_TOKEN': TELEGRAM_TOKEN,
+    }
+    for key, value in tokens.items():
+        name_token = value
+        if value is None:
+            logger.critical('Ошибка работы программы: '
+                        'нехватает переменной окружения'
+                        f'{name_token}'
+                        'Программа остановлена.')
+            return False
+        else:
+            return True
 
 
 def send_message(bot, message):
     """Отправляет сообщение в Telegram-чат."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
-        logger.debug('Отправлено сообщение')
-    except Exception as error:
+    except ValueError as error:
         logger.error(f'Ошибка отправки сообщения: {error}')
+    else:
+        logger.debug('Отправлено сообщение')
 
 
 def get_api_answer(timestamp):
     """Делает запрос к единственному эндпоинту API-сервиса."""
     payload = {'from_date': timestamp}
     try:
-        response = requests.get(ENDPOINT, headers=HEADERS, params=payload)
-    except requests.RequestException:
-        raise IncorrectAPIRequest('Некорректный API')
-    if response.status_code != HTTPStatus.OK:
-        raise IncorrectStatusRequest('Статус запроса не 200')
-    return response.json()
+        reply = requests.get(ENDPOINT, headers=HEADERS, params=payload)
+        if reply.status_code != HTTPStatus.OK:
+            raise IncorrectStatusRequest('Статус запроса не 200')
+    except requests.RequestException as error:
+        raise IncorrectAPIRequest(f'Ошибка при выполнении запроса: {error}')
+
+    try:
+        response = reply.json()
+    except json.JSONDecodeError as error:
+        logger.error(f'Десериализованные данные'
+                     f' не являются допустимым документом JSON {error}')
+
+    if response:
+        logger.info(f'Получен успешный ответ API {response}')
+    return response
 
 
 def check_response(response):
@@ -79,17 +93,15 @@ def check_response(response):
     if not isinstance(response, dict):
         raise TypeError(f'Неверный тип данных,'
                         f'полученный тип данных ответа {type(response)}')
-    keys = ('homeworks',
-            'current_date',
-            )
-    if not all(key in response for key in keys):
-        raise KeyError('В ответе API отсуствует один из ключей')
+    if type(response) is dict:
+        if 'homeworks' in response:
+            if not isinstance(response['homeworks'], list):
+                raise TypeError('Ошибка типа объекта')
+            logger.error('Объект не является типом "list"')
     homeworks = response.get('homeworks')
     if not isinstance(homeworks, list):
         raise TypeError(f'Неверный тип данных по ключу homework,'
                         f'полученный тип данных {type(homeworks)}')
-    if not homeworks:
-        raise IndexError('Список домашних работ пустой')
     last_homework = homeworks[0]
     return last_homework
 
@@ -104,19 +116,21 @@ def parse_status(homework):
         raise KeyError('Отсуствует статус домашней работы.')
     verdict = HOMEWORK_VERDICTS.get(homework_status)
     if not verdict:
-        raise KeyError('Ответ последней домашней'
+        raise ValueError('Ответ последней домашней'
                        'не соответствует стандартным или отсуствует.')
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
 def main():
     """Основная логика работы бота."""
+    logging.basicConfig(
+    level=logging.DEBUG,
+    filename='program.log',
+    format='%(asctime)s, %(levelname)s, %(message)s, %(name)s'
+    )
     logger.debug('Бот запущен')
-    if not check_tokens():
-        logger.critical('Ошибка работы программы: '
-                        'нехватает переменных окружения\n'
-                        'Программа остановлена.')
-        sys.exit()
+    if check_tokens() is False:
+        os.abort()
     bot = telebot.TeleBot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
     last_message = ''
