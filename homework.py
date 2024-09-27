@@ -60,7 +60,7 @@ def send_message(bot, message):
     """Отправляет сообщение в Telegram-чат."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
-    except ValueError as error:
+    except telebot.apihelper.ApiException as error:
         logger.error(f'Ошибка отправки сообщения: {error}')
     else:
         logger.debug('Отправлено сообщение')
@@ -128,9 +128,9 @@ def main():
         format='%(asctime)s, %(levelname)s, %(message)s, %(name)s'
     )
     logger.debug('Бот запущен')
-    if check_tokens() is False:
-        os.abort()
     bot = telebot.TeleBot(token=TELEGRAM_TOKEN)
+    if check_tokens() is False:
+        return
     timestamp = int(time.time())
     last_message = ''
     while True:
