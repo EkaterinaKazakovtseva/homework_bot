@@ -2,6 +2,7 @@ from http import HTTPStatus
 import logging
 from logging.handlers import RotatingFileHandler
 import os
+from pathlib import Path
 import time
 
 from dotenv import load_dotenv
@@ -14,10 +15,14 @@ from exceptions import IncorrectAPIRequest, IncorrectStatusRequest
 load_dotenv()
 
 
+BASE_DIR = Path(__file__).resolve().parent
+Path(BASE_DIR / "logs").mkdir(exist_ok=True)
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 handler = RotatingFileHandler(
-    'd:/dev/homework_bot/my_logger.log',
+    BASE_DIR / 'logs/my_logger.log',
+    mode='a',
     maxBytes=50 * 1024 * 1024,
     backupCount=5)
 logger.addHandler(handler)
