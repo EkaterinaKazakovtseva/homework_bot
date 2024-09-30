@@ -18,7 +18,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 handler = RotatingFileHandler(
-    'my_logger.log', maxBytes=52428800, backupCount=5)
+    'd:/dev/homework_bot/my_logger.log', maxBytes=50*1024*1024, backupCount=5)
 logger.addHandler(handler)
 
 PRACTICUM_TOKEN = os.getenv('PRAKTIKUM_TOKEN')
@@ -41,19 +41,18 @@ def check_tokens():
     """Проверяет доступность переменных окружения."""
     tokens = {
         'PRACTICUM_TOKEN': PRACTICUM_TOKEN,
-        'TELEGRAM_CHAT_ID': TELEGRAM_CHAT_ID,
         'TELEGRAM_TOKEN': TELEGRAM_TOKEN,
+        'TELEGRAM_CHAT_ID': TELEGRAM_CHAT_ID
     }
-    for key, value in tokens.items():
-        name_token = value
-        if value is None:
-            logger.critical('Ошибка работы программы: '
-                            'нехватает переменной окружения'
-                            f'{name_token}'
-                            'Программа остановлена.')
-            return False
-        else:
-            return True
+    none_tokens = [name_token
+                   for name_token, value in tokens.items()
+                   if value is None]
+    if none_tokens:
+        logger.critical('Ошибка работы программы: '
+                        f'нехватает переменных окружения {", ".join(none_tokens)}'
+                        'Программа остановлена.')
+        return False
+    return True
 
 
 def send_message(bot, message):
@@ -70,21 +69,12 @@ def get_api_answer(timestamp):
     """Делает запрос к единственному эндпоинту API-сервиса."""
     payload = {'from_date': timestamp}
     try:
-        reply = requests.get(ENDPOINT, headers=HEADERS, params=payload)
-        if reply.status_code != HTTPStatus.OK:
-            raise IncorrectStatusRequest('Статус запроса не 200')
+        response = requests.get(ENDPOINT, headers=HEADERS, params=payload)
     except requests.RequestException as error:
         raise IncorrectAPIRequest(f'Ошибка при выполнении запроса: {error}')
-
-    try:
-        response = reply.json()
-    except json.JSONDecodeError as error:
-        logger.error(f'Десериализованные данные'
-                     f' не являются допустимым документом JSON {error}')
-
-    if response:
-        logger.info(f'Получен успешный ответ API {response}')
-    return response
+    if response.status_code != HTTPStatus.OK:
+        raise IncorrectStatusRequest('Статус запроса не 200')
+    return response.json()
 
 
 def check_response(response):
@@ -92,17 +82,12 @@ def check_response(response):
     if not isinstance(response, dict):
         raise TypeError(f'Неверный тип данных,'
                         f'полученный тип данных ответа {type(response)}')
-    if type(response) is dict:
-        if 'homeworks' in response:
-            if not isinstance(response['homeworks'], list):
-                raise TypeError('Ошибка типа объекта')
-            logger.error('Объект не является типом "list"')
-    homeworks = response.get('homeworks')
-    if not isinstance(homeworks, list):
+    elif 'homeworks' not in response:
+        raise IncorrectAPIRequest('В ответе от API отсутствует ключ "homeworks"')
+    elif not isinstance(response['homeworks'], list):
         raise TypeError(f'Неверный тип данных по ключу homework,'
-                        f'полученный тип данных {type(homeworks)}')
-    last_homework = homeworks[0]
-    return last_homework
+                        f'полученный тип данных {type(response)}')
+    return response.get('homeworks')
 
 
 def parse_status(homework):
@@ -122,33 +107,35 @@ def parse_status(homework):
 
 def main():
     """Основная логика работы бота."""
-    logging.basicConfig(
-        level=logging.DEBUG,
-        filename='program.log',
-        format='%(asctime)s, %(levelname)s, %(message)s, %(name)s'
-    )
+    formatter=logging.Formatter('%(asctime)s, %(levelname)s, %(message)s, %(name)s')
     logger.debug('Бот запущен')
     bot = telebot.TeleBot(token=TELEGRAM_TOKEN)
-    if check_tokens() is False:
-        return
+    if not check_tokens():
+        os._exit()
     timestamp = int(time.time())
     last_message = ''
     while True:
         try:
             api_answer = get_api_answer(timestamp)
             last_homework = check_response(api_answer)
-            message = parse_status(last_homework)
+            timestamp = api_answer.get('current_date', timestamp)
+            if last_homework:
+                current_homework = last_homework[0]
+                message = parse_status(current_homework)
+                if message != last_message:
+                    last_message = message
+                    send_message(bot, message)
+        except telebot.apihelper.ApiException as error:
+            logger.error(f'Ошибка отправки сообщения: {error}')
         except Exception as error:
             message = f'Ошибка работы программы: {error}'
-            logger.error(f'Ошибка работы программы: {error}')
-        finally:
             if message != last_message:
-                send_message(bot, message)
                 last_message = message
-            else:
-                logger.debug('В телеграмм ничего не отправлено.')
+                logger.error(message)
+                send_message(bot, message)
+        finally:
             time.sleep(RETRY_PERIOD)
-
+ 
 
 if __name__ == '__main__':
     main()
