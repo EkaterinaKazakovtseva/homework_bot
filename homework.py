@@ -1,4 +1,3 @@
-import json
 from http import HTTPStatus
 import logging
 from logging.handlers import RotatingFileHandler
@@ -18,7 +17,9 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 handler = RotatingFileHandler(
-    'd:/dev/homework_bot/my_logger.log', maxBytes=50*1024*1024, backupCount=5)
+    'd:/dev/homework_bot/my_logger.log',
+    maxBytes=50 * 1024 * 1024,
+    backupCount=5)
 logger.addHandler(handler)
 
 PRACTICUM_TOKEN = os.getenv('PRAKTIKUM_TOKEN')
@@ -49,7 +50,7 @@ def check_tokens():
                    if value is None]
     if none_tokens:
         logger.critical('Ошибка работы программы: '
-                        f'нехватает переменных окружения {", ".join(none_tokens)}'
+                        f'мало переменных окружения {", ".join(none_tokens)}'
                         'Программа остановлена.')
         return False
     return True
@@ -83,7 +84,7 @@ def check_response(response):
         raise TypeError(f'Неверный тип данных,'
                         f'полученный тип данных ответа {type(response)}')
     elif 'homeworks' not in response:
-        raise IncorrectAPIRequest('В ответе от API отсутствует ключ "homeworks"')
+        raise IncorrectAPIRequest('В ответе API отсутствует ключ "homeworks"')
     elif not isinstance(response['homeworks'], list):
         raise TypeError(f'Неверный тип данных по ключу homework,'
                         f'полученный тип данных {type(response)}')
@@ -107,7 +108,7 @@ def parse_status(homework):
 
 def main():
     """Основная логика работы бота."""
-    formatter=logging.Formatter('%(asctime)s, %(levelname)s, %(message)s, %(name)s')
+    logging.Formatter('%(asctime)s, %(levelname)s, %(message)s, %(name)s')
     logger.debug('Бот запущен')
     bot = telebot.TeleBot(token=TELEGRAM_TOKEN)
     if not check_tokens():
@@ -135,7 +136,7 @@ def main():
                 send_message(bot, message)
         finally:
             time.sleep(RETRY_PERIOD)
- 
+
 
 if __name__ == '__main__':
     main()
