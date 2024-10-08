@@ -1,7 +1,9 @@
 from http import HTTPStatus
+import json
 import logging
 from logging.handlers import RotatingFileHandler
 import os
+import sys
 from pathlib import Path
 import time
 
@@ -20,6 +22,7 @@ Path(BASE_DIR / "logs").mkdir(exist_ok=True)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+logging.Formatter('%(asctime)s, %(levelname)s, %(message)s, %(name)s')
 handler = RotatingFileHandler(
     BASE_DIR / 'logs/my_logger.log',
     mode='a',
@@ -76,10 +79,13 @@ def get_api_answer(timestamp):
     payload = {'from_date': timestamp}
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=payload)
+        if response.status_code != HTTPStatus.OK:
+            raise IncorrectStatusRequest('Статус запроса не 200')
     except requests.RequestException as error:
         raise IncorrectAPIRequest(f'Ошибка при выполнении запроса: {error}')
-    if response.status_code != HTTPStatus.OK:
-        raise IncorrectStatusRequest('Статус запроса не 200')
+    except json.JSONDecodeError as error:
+        logger.error(f'Данные не являются'
+                     f'допустимым документом JSON {error}')
     return response.json()
 
 
@@ -88,10 +94,12 @@ def check_response(response):
     if not isinstance(response, dict):
         raise TypeError(f'Неверный тип данных,'
                         f'полученный тип данных ответа {type(response)}')
+    elif 'current_date' not in response:
+       raise IncorrectAPIRequest('В ответе API отсутствует ключ "current_date"')
     elif 'homeworks' not in response:
-        raise IncorrectAPIRequest('В ответе API отсутствует ключ "homeworks"')
+       raise IncorrectAPIRequest('В ответе API отсутствует ключ "homeworks"')
     elif not isinstance(response['homeworks'], list):
-        raise TypeError(f'Неверный тип данных по ключу homework,'
+        raise TypeError(f'Неверный тип данных по ключу homeworks,'
                         f'полученный тип данных {type(response)}')
     return response.get('homeworks')
 
@@ -113,11 +121,10 @@ def parse_status(homework):
 
 def main():
     """Основная логика работы бота."""
-    logging.Formatter('%(asctime)s, %(levelname)s, %(message)s, %(name)s')
     logger.debug('Бот запущен')
     bot = telebot.TeleBot(token=TELEGRAM_TOKEN)
     if not check_tokens():
-        os._exit()
+        sys.exit("error")
     timestamp = int(time.time())
     last_message = ''
     while True:
@@ -126,19 +133,18 @@ def main():
             last_homework = check_response(api_answer)
             timestamp = api_answer.get('current_date', timestamp)
             if last_homework:
-                current_homework = last_homework[0]
-                message = parse_status(current_homework)
-                if message != last_message:
-                    last_message = message
-                    send_message(bot, message)
-        except telebot.apihelper.ApiException as error:
-            logger.error(f'Ошибка отправки сообщения: {error}')
+                message = parse_status(
+                   api_answer.get('homeworks')[0]
+                )
+                send_message(bot, message)
+            time.sleep(RETRY_PERIOD)
         except Exception as error:
             message = f'Ошибка работы программы: {error}'
             if message != last_message:
                 last_message = message
                 logger.error(message)
                 send_message(bot, message)
+            time.sleep(RETRY_PERIOD)
         finally:
             time.sleep(RETRY_PERIOD)
 
