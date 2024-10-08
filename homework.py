@@ -3,8 +3,8 @@ import json
 import logging
 from logging.handlers import RotatingFileHandler
 import os
-import sys
 from pathlib import Path
+import sys
 import time
 
 from dotenv import load_dotenv
@@ -95,9 +95,9 @@ def check_response(response):
         raise TypeError(f'Неверный тип данных,'
                         f'полученный тип данных ответа {type(response)}')
     elif 'current_date' not in response:
-       raise IncorrectAPIRequest('В ответе API отсутствует ключ "current_date"')
+       raise IncorrectAPIRequest('В ответе API отсутствует ключ current_date')
     elif 'homeworks' not in response:
-       raise IncorrectAPIRequest('В ответе API отсутствует ключ "homeworks"')
+       raise IncorrectAPIRequest('В ответе API отсутствует ключ homeworks')
     elif not isinstance(response['homeworks'], list):
         raise TypeError(f'Неверный тип данных по ключу homeworks,'
                         f'полученный тип данных {type(response)}')
@@ -134,8 +134,7 @@ def main():
             timestamp = api_answer.get('current_date', timestamp)
             if last_homework:
                 message = parse_status(
-                   api_answer.get('homeworks')[0]
-                )
+                   api_answer.get('homeworks')[0])
                 send_message(bot, message)
             time.sleep(RETRY_PERIOD)
         except Exception as error:
