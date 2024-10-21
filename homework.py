@@ -140,10 +140,10 @@ def main():
                 timestamp = last_timestapm
         except Exception as error:
             message = f'Ошибка работы программы: {error}'
-            if message != last_message: 
-                last_message = message 
-                logger.error(message) 
-                send_message(bot, message) 
+            if message != last_message:
+                last_message = message
+                logger.error(message)
+                send_message(bot, message)
         time.sleep(RETRY_PERIOD)
 
 
