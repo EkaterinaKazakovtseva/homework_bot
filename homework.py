@@ -119,7 +119,9 @@ def parse_status(homework):
                          'не соответствует стандартным или отсуствует.')
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
+
 def check_same_message(bot, message, last_message):
+    """Проверяет, является ли новое сообщение одинаковым с предыдущим."""
     if message != last_message:
         last_message = message
         logger.error(message)
