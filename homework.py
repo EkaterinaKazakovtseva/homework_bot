@@ -119,6 +119,12 @@ def parse_status(homework):
                          'не соответствует стандартным или отсуствует.')
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
+def check_same_message(bot, message, last_message):
+    if message != last_message:
+        last_message = message
+        logger.error(message)
+        send_message(bot, message)
+
 
 def main():
     """Основная логика работы бота."""
@@ -134,16 +140,13 @@ def main():
             last_homework = check_response(api_answer)
             if last_homework:
                 message = parse_status(api_answer.get('homeworks')[0])
-                send_message(bot, message)
+                check_same_message(bot, message, last_message)
             last_timestapm = api_answer['current_date']
             if last_timestapm:
                 timestamp = last_timestapm
         except Exception as error:
             message = f'Ошибка работы программы: {error}'
-            if message != last_message:
-                last_message = message
-                logger.error(message)
-                send_message(bot, message)
+            check_same_message(bot, message, last_message)
         time.sleep(RETRY_PERIOD)
 
 
