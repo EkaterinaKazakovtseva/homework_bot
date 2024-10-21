@@ -81,12 +81,12 @@ def get_api_answer(timestamp):
         response = requests.get(ENDPOINT, headers=HEADERS, params=payload)
         if response.status_code != HTTPStatus.OK:
             raise IncorrectStatusRequest('Статус запроса не 200')
-        return response.json() 
+        return response.json()
     except requests.RequestException as error:
         raise IncorrectAPIRequest(f'Ошибка при выполнении запроса: {error}')
     except json.JSONDecodeError as error:
         raise ValueError(f'Данные не являются'
-                     f'допустимым документом JSON {error}')
+                         f'допустимым документом JSON {error}')
 
 
 def check_response(response):
@@ -120,16 +120,6 @@ def parse_status(homework):
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
-def log_send_err_message(exception, err_description):
-    """Отправка сообщения об ошибке в лог и Telegramm."""
-    message = ('В работе бота произошла ошибка: '
-               f'{exception} {err_description}')
-    logger.error(message)
-    logger.info('Бот отправляет сообщение об ошибке'
-                'в Telegramm. ')
-    send_message(bot, message)
-
-
 def main():
     """Основная логика работы бота."""
     logger.debug('Бот запущен')
@@ -150,7 +140,10 @@ def main():
                 timestamp = last_timestapm
         except Exception as error:
             message = f'Ошибка работы программы: {error}'
-            log_send_err_message(error, message)
+            if message != last_message: 
+                last_message = message 
+                logger.error(message) 
+                send_message(bot, message) 
         time.sleep(RETRY_PERIOD)
 
 
