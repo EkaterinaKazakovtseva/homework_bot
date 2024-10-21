@@ -60,8 +60,8 @@ def check_tokens():
         logger.critical('Ошибка работы программы: '
                         f'мало переменных окружения {", ".join(none_tokens)}'
                         'Программа остановлена.')
-        return False
-    return True
+        return []
+    return not []
 
 
 def send_message(bot, message):
@@ -81,12 +81,12 @@ def get_api_answer(timestamp):
         response = requests.get(ENDPOINT, headers=HEADERS, params=payload)
         if response.status_code != HTTPStatus.OK:
             raise IncorrectStatusRequest('Статус запроса не 200')
+        return response.json() 
     except requests.RequestException as error:
         raise IncorrectAPIRequest(f'Ошибка при выполнении запроса: {error}')
     except json.JSONDecodeError as error:
-        logger.error(f'Данные не являются'
+        raise ValueError(f'Данные не являются'
                      f'допустимым документом JSON {error}')
-    return response.json()
 
 
 def check_response(response):
@@ -94,12 +94,13 @@ def check_response(response):
     if not isinstance(response, dict):
         raise TypeError(f'Неверный тип данных,'
                         f'полученный тип данных ответа {type(response)}')
-    elif 'current_date' not in response:
-        raise IncorrectAPIRequest('В ответе API отсутствует ключ current_date')
     elif 'homeworks' not in response:
-        raise IncorrectAPIRequest('В ответе API отсутствует ключ homeworks')
+        raise KeyError('В ответе API отсутствует ключ homeworks')
     elif not isinstance(response['homeworks'], list):
         raise TypeError(f'Неверный тип данных по ключу homeworks,'
+                        f'полученный тип данных {type(response)}')
+    elif not isinstance(response['current_date'], int):
+        raise TypeError(f'Неверный тип данных по ключу current_date,'
                         f'полученный тип данных {type(response)}')
     return response.get('homeworks')
 
@@ -119,6 +120,16 @@ def parse_status(homework):
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
+def log_send_err_message(exception, err_description):
+    """Отправка сообщения об ошибке в лог и Telegramm."""
+    message = ('В работе бота произошла ошибка: '
+               f'{exception} {err_description}')
+    logger.error(message)
+    logger.info('Бот отправляет сообщение об ошибке'
+                'в Telegramm. ')
+    send_message(bot, message)
+
+
 def main():
     """Основная логика работы бота."""
     logger.debug('Бот запущен')
@@ -131,20 +142,16 @@ def main():
         try:
             api_answer = get_api_answer(timestamp)
             last_homework = check_response(api_answer)
-            timestamp = api_answer.get('current_date', timestamp)
             if last_homework:
                 message = parse_status(api_answer.get('homeworks')[0])
                 send_message(bot, message)
-            time.sleep(RETRY_PERIOD)
+            last_timestapm = api_answer['current_date']
+            if last_timestapm:
+                timestamp = last_timestapm
         except Exception as error:
             message = f'Ошибка работы программы: {error}'
-            if message != last_message:
-                last_message = message
-                logger.error(message)
-                send_message(bot, message)
-            time.sleep(RETRY_PERIOD)
-        finally:
-            time.sleep(RETRY_PERIOD)
+            log_send_err_message(error, message)
+        time.sleep(RETRY_PERIOD)
 
 
 if __name__ == '__main__':
