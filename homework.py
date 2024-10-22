@@ -60,8 +60,7 @@ def check_tokens():
         logger.critical('Ошибка работы программы: '
                         f'мало переменных окружения {", ".join(none_tokens)}'
                         'Программа остановлена.')
-        return []
-    return not []
+    return not none_tokens
 
 
 def send_message(bot, message):
@@ -139,17 +138,23 @@ def main():
     while True:
         try:
             api_answer = get_api_answer(timestamp)
-            last_homework = check_response(api_answer)
-            if last_homework:
+            last_homeworks = check_response(api_answer)
+            if last_homeworks:
                 message = parse_status(api_answer.get('homeworks')[0])
                 check_same_message(bot, message, last_message)
-            last_timestapm = api_answer['current_date']
-            if last_timestapm:
+                last_timestapm = api_answer['current_date']
+            else: 
+                logger.debug('Новые статусы отсутствуют.')
                 timestamp = last_timestapm
+                last_message = ''
+        except KeyError as error:
+            message = ('В ответе АПИ не найден ключ current_date.')
+            logger.error(message)
         except Exception as error:
             message = f'Ошибка работы программы: {error}'
             check_same_message(bot, message, last_message)
-        time.sleep(RETRY_PERIOD)
+        finally:
+            time.sleep(RETRY_PERIOD)
 
 
 if __name__ == '__main__':
