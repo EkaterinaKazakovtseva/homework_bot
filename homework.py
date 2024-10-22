@@ -149,7 +149,7 @@ def main():
                 last_message = ''
         except KeyError as error:
             message = (f'Ошибка работы программы: {error}'
-                      'В ответе АПИ не найден ключ current_date.')
+                       'В ответе АПИ не найден ключ current_date.')
             logger.error(message)
         except Exception as error:
             message = f'Ошибка работы программы: {error}'
