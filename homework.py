@@ -143,12 +143,13 @@ def main():
                 message = parse_status(api_answer.get('homeworks')[0])
                 check_same_message(bot, message, last_message)
                 last_timestapm = api_answer['current_date']
-            else: 
+            else:
                 logger.debug('Новые статусы отсутствуют.')
                 timestamp = last_timestapm
                 last_message = ''
         except KeyError as error:
-            message = ('В ответе АПИ не найден ключ current_date.')
+            message = (f'Ошибка работы программы: {error}'
+                      'В ответе АПИ не найден ключ current_date.')
             logger.error(message)
         except Exception as error:
             message = f'Ошибка работы программы: {error}'
