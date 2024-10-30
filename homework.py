@@ -11,7 +11,8 @@ from dotenv import load_dotenv
 import requests
 import telebot
 
-from exceptions import IncorrectAPIRequest, IncorrectKeyCurrentDate, IncorrectStatusRequest
+from exceptions import (IncorrectAPIRequest, IncorrectKeyCurrentDate,
+                        IncorrectStatusRequest)
 
 
 load_dotenv()
@@ -99,8 +100,8 @@ def check_response(response):
         raise TypeError(f'Неверный тип данных по ключу homeworks,'
                         f'полученный тип данных {type(response)}')
     elif not isinstance(response['current_date'], int):
-        raise IncorrectKeyCurrentDate(f'Неверный тип данных по ключу current_date,'
-                        f'полученный тип данных {type(response)}')
+        raise IncorrectKeyCurrentDate(f'Неверный тип данных по current_date,'
+                                      f'полученный тип {type(response)}')
     return response.get('homeworks')
 
 
@@ -123,6 +124,8 @@ def check_same_message(bot, message, last_message):
     """Проверяет, является ли новое сообщение одинаковым с предыдущим."""
     if message != last_message:
         logger.error(message)
+        logger.info('Бот отправляет сообщение об ошибке'
+                    'в Телеграм.')
         send_message(bot, message)
 
 
@@ -141,7 +144,7 @@ def main():
             if last_homeworks:
                 message = parse_status(api_answer.get('homeworks')[0])
                 check_same_message(bot, message, last_message)
-                last_timestapm = api_answer['current_date']
+                timestamp = api_answer['current_date']
             else:
                 logger.debug('Новые статусы отсутствуют.')
                 last_message = ''
