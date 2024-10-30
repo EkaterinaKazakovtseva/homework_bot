@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 import requests
 import telebot
 
-from exceptions import IncorrectAPIRequest, IncorrectStatusRequest
+from exceptions import IncorrectAPIRequest, IncorrectKeyCurrentDate, IncorrectStatusRequest
 
 
 load_dotenv()
@@ -99,7 +99,7 @@ def check_response(response):
         raise TypeError(f'Неверный тип данных по ключу homeworks,'
                         f'полученный тип данных {type(response)}')
     elif not isinstance(response['current_date'], int):
-        raise TypeError(f'Неверный тип данных по ключу current_date,'
+        raise IncorrectKeyCurrentDate(f'Неверный тип данных по ключу current_date,'
                         f'полученный тип данных {type(response)}')
     return response.get('homeworks')
 
@@ -122,7 +122,6 @@ def parse_status(homework):
 def check_same_message(bot, message, last_message):
     """Проверяет, является ли новое сообщение одинаковым с предыдущим."""
     if message != last_message:
-        last_message = message
         logger.error(message)
         send_message(bot, message)
 
@@ -145,15 +144,14 @@ def main():
                 last_timestapm = api_answer['current_date']
             else:
                 logger.debug('Новые статусы отсутствуют.')
-                timestamp = last_timestapm
                 last_message = ''
-        except KeyError as error:
-            message = (f'Ошибка работы программы: {error}'
-                       'В ответе АПИ не найден ключ current_date.')
-            logger.error(message)
         except Exception as error:
             message = f'Ошибка работы программы: {error}'
-            check_same_message(bot, message, last_message)
+            if error == IncorrectKeyCurrentDate:
+                if message != last_message:
+                    logger.error(message)
+            else:
+                check_same_message(bot, message, last_message)
         finally:
             time.sleep(RETRY_PERIOD)
 

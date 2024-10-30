@@ -3,3 +3,6 @@ class IncorrectAPIRequest(Exception):
 
 class IncorrectStatusRequest(Exception):
     pass
+
+class IncorrectKeyCurrentDate(Exception):
+    pass
