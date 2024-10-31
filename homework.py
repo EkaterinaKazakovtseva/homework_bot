@@ -122,11 +122,10 @@ def parse_status(homework):
 
 def check_same_message(bot, message, last_message):
     """Проверяет, является ли новое сообщение одинаковым с предыдущим."""
-    if message != last_message:
-        logger.error(message)
-        logger.info('Бот отправляет сообщение об ошибке'
-                    'в Телеграм.')
-        send_message(bot, message)
+    logger.error(message)
+    logger.info('Бот отправляет сообщение об ошибке'
+                'в Телеграм.')
+    send_message(bot, message)
 
 
 def main():
@@ -141,20 +140,21 @@ def main():
         try:
             api_answer = get_api_answer(timestamp)
             last_homeworks = check_response(api_answer)
+            timestamp = api_answer['current_date']
             if last_homeworks:
                 message = parse_status(api_answer.get('homeworks')[0])
                 check_same_message(bot, message, last_message)
-                timestamp = api_answer['current_date']
             else:
                 logger.debug('Новые статусы отсутствуют.')
                 last_message = ''
         except Exception as error:
             message = f'Ошибка работы программы: {error}'
-            if error == IncorrectKeyCurrentDate:
-                if message != last_message:
-                    logger.error(message)
-            else:
+            if message != last_message:
                 check_same_message(bot, message, last_message)
+        except IncorrectKeyCurrentDate as error:
+            message = f'Ошибка работы программы: {error}'
+            if message != last_message:
+                logger.error(message)
         finally:
             time.sleep(RETRY_PERIOD)
 
