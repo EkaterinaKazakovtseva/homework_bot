@@ -140,7 +140,6 @@ def main():
                     send_message(bot, message)
             else:
                 logger.debug('Новые статусы отсутствуют.')
-            last_message = ''
         except Exception as error:
             message = f'Ошибка работы программы: {error}'
             if message != last_message:
